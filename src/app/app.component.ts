@@ -71,7 +71,7 @@ type CartItem = { product: Product; qty: number };
           </div>
         </article>
       </section>
-      <ng-template #emptyState><div class="empty-state"><span>⌕</span><h3>Nenhum produto encontrado</h3><p>Tente mudar a busca ou remover os filtros.</p><button class="clear-filters" (click)="clearFilters()">Limpar busca e filtros</button></div></ng-template>
+      <ng-template #emptyState><div class="empty-state catalog-loading-state" *ngIf="catalogSource() === 'loading'; else noProducts"><span class="loading-spinner" aria-hidden="true"></span><h3>Carregando catálogo</h3><p>Estamos buscando os produtos atualizados da King Shape…</p></div><ng-template #noProducts><div class="empty-state"><span *ngIf="catalogSource() !== 'fallback'">⌕</span><h3>{{ catalogSource() === 'fallback' ? 'Não foi possível carregar os produtos' : 'Nenhum produto encontrado' }}</h3><p>{{ catalogSource() === 'fallback' ? 'Confira sua conexão e atualize a página para tentar novamente.' : 'Tente mudar a busca ou remover os filtros.' }}</p><button class="clear-filters" *ngIf="catalogSource() !== 'fallback'" (click)="clearFilters()">Limpar busca e filtros</button></div></ng-template></ng-template>
 
       </div>
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'ofertas'" aria-label="Página de ofertas">
@@ -101,7 +101,7 @@ type CartItem = { product: Product; qty: number };
             </div>
           </article>
         </section>
-        <ng-template #noOffers><div class="empty-state"><h3>Nenhuma oferta encontrada</h3><p>Confira novamente em breve ou veja todos os produtos.</p><button class="clear-filters" (click)="search=''; navigateTo('catalogo')">Ver produtos</button></div></ng-template>
+        <ng-template #noOffers><div class="empty-state catalog-loading-state" *ngIf="catalogSource() === 'loading'; else noOffersLoaded"><span class="loading-spinner" aria-hidden="true"></span><h3>Carregando catálogo</h3><p>Estamos buscando as ofertas atualizadas…</p></div><ng-template #noOffersLoaded><div class="empty-state"><h3>{{ catalogSource() === 'fallback' ? 'Não foi possível carregar as ofertas' : 'Nenhuma oferta encontrada' }}</h3><p>{{ catalogSource() === 'fallback' ? 'Confira sua conexão e atualize a página.' : 'Confira novamente em breve ou veja todos os produtos.' }}</p><button class="clear-filters" (click)="search=''; navigateTo('catalogo')">Ver produtos</button></div></ng-template></ng-template>
       </div>
 
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'parceiros'" aria-label="Página de parceiros">
@@ -199,20 +199,7 @@ export class AppComponent {
   customerName = ''; customerPhone = ''; customerEmail = ''; customerCep = ''; addressNumber = ''; customerAddress = ''; affiliateCoupon = '';
   favorites = signal<number[]>([]);
   productQuantities = signal<Record<number, number>>({});
-  private readonly fallbackProducts: Product[] = [
-    {id:1,brand:'LANDERLAN',name:'Cipionato de Testosterona 200mg/2ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:135,available:true,image:'assets/products/cipionato-lander-gold.webp'},
-    {id:2,brand:'LANDERLAN',name:'Decaland Depot 200mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:135,available:true,image:'assets/products/decaland-lander-gold-deca.webp'},
-    {id:3,brand:'COOPER PHARMA',name:'Testosterone Mix Injection 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:59,available:true,image:'assets/products/durateston-cooper-pharma-susobolic.webp'},
-    {id:4,brand:'LANDERLAN',name:'Durateston Plus Gold 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:49,available:true,premium:true,image:'assets/products/durateston-lander-gold.png'},
-    {id:5,brand:'LANDERLAN',name:'Testoland Depot 200mg/2ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:139,available:true,premium:true,image:'assets/products/testoland-lander-diamond-cipionato.webp'},
-    {id:6,brand:'COOPER PHARMA',name:'Testosterone Enanthate 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:59,available:true,image:'assets/products/testosterona-enantato-cooper-pharma-enanboli.webp'},
-    {id:7,brand:'ZPHC',name:'Enantato de Testosterona 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:299,available:true,premium:true,image:'assets/products/enantato-de-testosterona-zphc-de-250mg.webp'},
-    {id:8,brand:'ZPHC',name:'Enantato de Testosterona ZPHC 250mg/ml — frasco',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:299,available:true,premium:true,image:'assets/products/enantato-zphc-vial.webp'},
-    {id:9,brand:'KING PHARMA',name:'King Masteron Drostanolona Propionato 100mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:199,available:true,premium:true,image:'assets/products/king-masteron.webp'},
-    {id:10,brand:'MUSCLE LABS',name:'Testoviron 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:249,available:true,image:'assets/products/testosterona-enantato-mucle-labs-testoviron.webp'},
-    {id:11,brand:'ZPHC',name:'Retatrutida 120mg (5 vial de 24mg)',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:2997,oldPrice:3297,available:true,premium:true,badge:'OFERTA LIMITADA',image:'assets/products/zphc-reta-120.jpeg'}
-  ];
-  products = signal<Product[]>(this.fallbackProducts);
+  products = signal<Product[]>([]);
   catalogSource = signal<'loading' | 'king-shape' | 'woocommerce' | 'fallback'>('loading');
   catalogMessage = signal('Conectando ao catálogo da loja…');
   cartItems = signal<CartItem[]>(this.restoreCart());
@@ -277,8 +264,9 @@ export class AppComponent {
         return next;
       });
     } catch (error) {
+      this.products.set([]);
       this.catalogSource.set('fallback');
-      this.catalogMessage.set('Não foi possível conectar ao catálogo King Shape. O catálogo de demonstração está visível; pedidos reais permanecem bloqueados.');
+      this.catalogMessage.set('Não foi possível carregar o catálogo King Shape. Verifique sua conexão e tente novamente.');
       console.warn('King Shape: falha ao carregar catálogo personalizado.', error);
     }
   }
