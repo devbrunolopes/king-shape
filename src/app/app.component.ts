@@ -265,31 +265,58 @@ export class AppComponent {
 
   private async loadWordPressContent() {
     const api = 'https://kingshape.fit/wp-json/wp/v2';
+    const headers = { Accept: 'application/json' };
+    const loadPage = async (url: string): Promise<WordPressPage | null> => {
+      try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          console.warn(`King Shape: WordPress respondeu ${response.status} para ${url}`);
+          return null;
+        }
+        const data = await response.json();
+        if (Array.isArray(data)) return (data[0] as WordPressPage) || null;
+        return data as WordPressPage;
+      } catch (error) {
+        console.warn(`King Shape: falha ao consultar ${url}`, error);
+        return null;
+      }
+    };
+
     try {
-      const [partnersResponse, insuranceResponse, affiliateResponse] = await Promise.all([
-        fetch(`${api}/pages/209`, { headers: { Accept: 'application/json' } }),
-        fetch(`${api}/pages/789`, { headers: { Accept: 'application/json' } }),
-        fetch(`${api}/pages?slug=seja-nosso-afiliado`, { headers: { Accept: 'application/json' } })
+      // Carrega cada conteúdo de forma independente: uma página indisponível não bloqueia as outras.
+      const [partnersPage, insurancePage, affiliatePage] = await Promise.all([
+        loadPage(`${api}/pages/209`),
+        loadPage(`${api}/pages/789`),
+        loadPage(`${api}/pages?slug=seja-nosso-afiliado`)
       ]);
-      if (!partnersResponse.ok || !insuranceResponse.ok) throw new Error('O WordPress não conseguiu fornecer as páginas de parceiros e seguro.');
-      const partnersPage = await partnersResponse.json() as WordPressPage;
-      const insurancePage = await insuranceResponse.json() as WordPressPage;
-      const affiliatePages = affiliateResponse.ok ? await affiliateResponse.json() as WordPressPage[] : [];
-      this.parsePartners(partnersPage.content?.rendered || '');
-      this.parseInsurance(insurancePage.content?.rendered || '');
-      if (affiliatePages.length) this.parseAffiliate(affiliatePages[0]);
-      else {
-        // A página de apresentação de afiliados pode usar outro slug; tenta localizar pelo título.
-        const allResponse = await fetch(`${api}/pages?search=afiliado&per_page=100`, { headers: { Accept: 'application/json' } });
-        if (allResponse.ok) {
-          const pages = await allResponse.json() as WordPressPage[];
-          const page = pages.find(p => /seja-nosso-afiliado|cadastro-afiliado/i.test(p.slug)) || pages.find(p => /afiliado/i.test(p.title?.rendered || ''));
-          if (page) this.parseAffiliate(page);
+
+      if (partnersPage?.content?.rendered) this.parsePartners(partnersPage.content.rendered);
+      if (insurancePage?.content?.rendered) this.parseInsurance(insurancePage.content.rendered);
+
+      if (affiliatePage?.content?.rendered) {
+        this.parseAffiliate(affiliatePage);
+      } else {
+        const affiliateSearch = await loadPage(`${api}/pages?search=afiliado&per_page=100`);
+        if (affiliateSearch) this.parseAffiliate(affiliateSearch);
+        else {
+          try {
+            const response = await fetch(`${api}/pages?search=afiliado&per_page=100`, { headers });
+            if (response.ok) {
+              const pages = await response.json() as WordPressPage[];
+              const page = pages.find(p => /seja-nosso-afiliado|cadastro-afiliado/i.test(p.slug)) || pages.find(p => /afiliado/i.test(p.title?.rendered || ''));
+              if (page) this.parseAffiliate(page);
+            }
+          } catch (error) {
+            console.warn('King Shape: não foi possível localizar a página de afiliados.', error);
+          }
         }
       }
-    } catch (error) {
-      console.warn('King Shape: falha ao carregar páginas do WordPress.', error);
-      this.wordpressContentError.set('Não foi possível carregar algum conteúdo do WordPress. Tente atualizar a página.');
+
+      if (!partnersPage && !insurancePage) {
+        this.wordpressContentError.set('Não foi possível carregar as páginas de parceiros e seguro do WordPress. Verifique a API e tente novamente.');
+      } else if (!partnersPage || !insurancePage) {
+        this.wordpressContentError.set('Parte do conteúdo do WordPress não carregou. Confira a conexão e tente novamente.');
+      }
     } finally {
       this.wordpressContentLoading.set(false);
     }
@@ -299,9 +326,10 @@ export class AppComponent {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const cards = Array.from(doc.querySelectorAll('.partners .partner-card, .partner-card'));
     const parsed = cards.map((card, index) => {
-      const name = card.querySelector('h2, h3, h4')?.textContent?.trim() || `Parceiro ${index + 1}`;
+      const name = card.querySelector('h1, h2, h3, h4, strong, b, .elementor-heading-title, .partner-name')?.textContent?.trim() || card.querySelector('a[href]')?.textContent?.trim() || `Parceiro ${index + 1}`;
       const description = Array.from(card.querySelectorAll('p')).map(p => p.textContent?.trim()).filter(Boolean).join(' ');
-      const image = card.querySelector('img')?.getAttribute('src') || '';
+      const imageEl = card.querySelector('img');
+      const image = imageEl?.getAttribute('src') || imageEl?.getAttribute('data-src') || imageEl?.getAttribute('data-lazy-src') || imageEl?.getAttribute('srcset')?.split(',')[0]?.trim().split(/\s+/)[0] || ''; 
       const url = card.querySelector('a[href]')?.getAttribute('href') || 'https://kingshape.fit/parceiros/';
       const label = card.querySelector('span, small')?.textContent?.trim() || name.split(/\s+/)[0].toUpperCase();
       return { name, description, image, url, label };
@@ -311,14 +339,22 @@ export class AppComponent {
 
   private parseInsurance(html: string) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const section = doc.querySelector('.ks-insurance') || doc.body;
+    const section = doc.querySelector('.ks-insurance, .insurance-section, #seguro, [class*="insurance"]') || doc.body;
     const title = section.querySelector('h2')?.textContent?.trim() || 'Seguro de Entrega King Shape';
     const subtitle = section.querySelector('.ks-subtitle')?.textContent?.trim() || '';
     const badge = section.querySelector('.ks-badge')?.textContent?.trim() || '';
-    const cards = Array.from(section.querySelectorAll('.ks-card')).map(card => ({
-      title: card.querySelector('h3')?.textContent?.trim() || '',
-      html: Array.from(card.children).filter(child => child.tagName !== 'H3').map(child => child.outerHTML).join('')
+    const cardNodes = Array.from(section.querySelectorAll('.ks-card, .insurance-card, .elementor-icon-box-wrapper, .elementor-widget-container'));
+    const cards = cardNodes.map(card => ({
+      title: card.querySelector('h3, h4, h5, strong, .elementor-icon-box-title')?.textContent?.trim() || '',
+      html: Array.from(card.children).filter(child => !['H3', 'H4', 'H5', 'STRONG'].includes(child.tagName)).map(child => child.outerHTML).join('')
     })).filter(card => card.title);
+    if (!cards.length) {
+      const headings = Array.from(section.querySelectorAll('h3, h4, h5')).filter(h => h.textContent?.trim());
+      for (const heading of headings) {
+        const parent = heading.parentElement;
+        if (parent) cards.push({ title: heading.textContent?.trim() || '', html: Array.from(parent.children).filter(child => child !== heading).map(child => child.outerHTML).join('') });
+      }
+    }
     const summary = section.querySelector('.ks-highlight')?.textContent?.trim() || '';
     this.insuranceContent.set({ badge, title, subtitle, cards, summary });
   }
