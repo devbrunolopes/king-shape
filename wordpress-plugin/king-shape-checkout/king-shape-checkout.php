@@ -55,7 +55,7 @@ class KS_Checkout_WooCommerce {
         $body=$request->get_json_params(); $customer=isset($body['customer']) && is_array($body['customer']) ? $body['customer'] : [];
         $name=sanitize_text_field($customer['name'] ?? ''); $phone=sanitize_text_field($customer['phone'] ?? '');
         $email=sanitize_email($customer['email'] ?? ''); $postcode=sanitize_text_field($customer['postcode'] ?? '');
-        $address=sanitize_text_field($customer['address'] ?? ''); $number=sanitize_text_field($customer['address_number'] ?? '');
+        $address=sanitize_text_field($customer['address'] ?? ''); $number=sanitize_text_field($customer['address_number'] ?? ''); $state=sanitize_text_field($body['shipping_state'] ?? ($customer['state'] ?? '')); $shipping_insurance=!empty($body['shipping_insurance']);
         $digits=preg_replace('/\D+/', '', $phone);
         if (mb_strlen($name)<3 || strlen($digits)<10 || strlen($digits)>15) return $this->fail('Nome ou WhatsApp inválido.');
         if ($email && !is_email($email)) return $this->fail('E-mail inválido.');
@@ -84,17 +84,25 @@ class KS_Checkout_WooCommerce {
             $order=wc_create_order(['status'=>'pending','created_via'=>'king-shape-angular']);
             if (is_wp_error($order)) return $this->fail('Não foi possível criar o pedido. Tente novamente.', 500);
             foreach($order_items as [$product,$qty]) $order->add_product($product,$qty);
-            $address_data=['first_name'=>$name,'phone'=>$phone,'email'=>$email,'address_1'=>trim($address.($number ? ', '.$number : '')),'postcode'=>$postcode,'country'=>'BR'];
+            $address_data=['first_name'=>$name,'phone'=>$phone,'email'=>$email,'address_1'=>trim($address.($number ? ', '.$number : '')),'postcode'=>$postcode,'state'=>$state,'country'=>'BR'];
             $order->set_address($address_data,'billing');
             $shipping=$address_data; $order->set_address($shipping,'shipping');
             if ($coupon) $order->apply_coupon($coupon);
             $order->calculate_totals(true);
+            if ($shipping_insurance) {
+                $insurance_fee = new WC_Order_Item_Fee();
+                $insurance_fee->set_name('Seguro de encomenda (15%)');
+                $insurance_fee->set_amount(round((float)$order->get_total() * 0.15, wc_get_price_decimals()));
+                $insurance_fee->set_total(round((float)$order->get_total() * 0.15, wc_get_price_decimals()));
+                $order->add_item($insurance_fee);
+                $order->calculate_totals(true);
+            }
             $order->update_meta_data('_ks_checkout_source','angular-storefront');
             $order->update_meta_data('_ks_customer_whatsapp',$phone);
             $order->add_order_note('Pedido criado pelo checkout Angular. Aguardando confirmação de frete e pagamento via WhatsApp.');
             $order->save();
             $response_items=[]; foreach($order->get_items() as $line) $response_items[]=['name'=>$line->get_name(),'quantity'=>$line->get_quantity(),'total'=>(float)$line->get_total()];
-            return new WP_REST_Response(['success'=>true,'order'=>['id'=>$order->get_id(),'number'=>$order->get_order_number(),'status'=>$order->get_status(),'items'=>$response_items,'subtotal'=>(float)$order->get_subtotal(),'discount'=>(float)$order->get_discount_total(),'total'=>(float)$order->get_total(),'coupon'=>$coupon ? $coupon->get_code() : '']], 201);
+            return new WP_REST_Response(['success'=>true,'order'=>['id'=>$order->get_id(),'number'=>$order->get_order_number(),'status'=>$order->get_status(),'items'=>$response_items,'subtotal'=>(float)$order->get_subtotal(),'discount'=>(float)$order->get_discount_total(),'total'=>(float)$order->get_total(),'coupon'=>$coupon ? $coupon->get_code() : '', 'shipping_state'=>$state, 'shipping_insurance'=>$shipping_insurance]], 201);
         } catch (Throwable $e) {
             if (isset($order) && $order instanceof WC_Order) $order->delete(true);
             error_log('King Shape checkout error: '.$e->getMessage());

@@ -7,6 +7,11 @@ type KingShapeApiProduct = { id: number; name: string; sku?: string; brand?: str
 type KingShapeApiResponse = { products?: KingShapeApiProduct[]; page?: number; total?: number; pages?: number };
 type WooStoreProduct = { id: number; name: string; slug?: string; sku?: string; prices?: { price?: string; regular_price?: string; sale_price?: string; currency_minor_unit?: number }; images?: { src?: string; alt?: string }[]; categories?: { name?: string }[]; attributes?: { name?: string; terms?: { name?: string }[] }[]; is_in_stock?: boolean; is_purchasable?: boolean; on_sale?: boolean; };
 type CartItem = { product: Product; qty: number };
+type WordPressPartner = { name: string; label: string; description: string; image: string; url: string };
+type WordPressInsuranceCard = { title: string; html: string };
+type WordPressAffiliateContent = { eyebrow: string; title: string; description: string; cta: string; url: string; items: { title: string; description: string; url: string; image: string }[]; steps: { number: string; title: string; description: string; tags: string[] }[] };
+type WordPressPage = { id: number; slug: string; link: string; title?: { rendered?: string }; content?: { rendered?: string } };
+
 
 @Component({
   selector: 'ks-root', standalone: true, imports: [CommonModule, FormsModule],
@@ -107,30 +112,60 @@ type CartItem = { product: Product; qty: number };
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'parceiros'" aria-label="Página de parceiros">
       <section class="content-section partners-section" id="parceiros">
         <div class="content-heading"><p class="section-kicker">PARCEIROS</p><h2>Recomendamos</h2><p>Conheça profissionais e conteúdos que fazem parte da comunidade King Shape.</p></div>
-        <div class="partner-grid">
-          <article class="partner-card"><div class="partner-art partner-art-ander"><span>ANDER</span><small>Transforma Mente 365</small></div><h3>Transforma Mente 365</h3><p>Protocolos de treinos, dieta e hormonais.</p><a class="outline-cta" href="https://kingshape.fit/" target="_blank" rel="noopener">SAIBA MAIS <span>↗</span></a></article>
-          <article class="partner-card"><div class="partner-art partner-art-william"><span>WILLIAM</span><small>William Giudicce</small></div><h3>William Giudicce</h3><p>Protocolos de treino e hormonais.</p><a class="outline-cta" href="https://kingshape.fit/" target="_blank" rel="noopener">SAIBA MAIS <span>↗</span></a></article>
-          <article class="partner-card"><div class="partner-art partner-art-rafael"><span>RAFAEL</span><small>Rafael Jeffery</small></div><h3>Rafael Jeffery</h3><p>Protocolos de treinos, dieta e hormonais.</p><a class="outline-cta" href="https://kingshape.fit/" target="_blank" rel="noopener">SAIBA MAIS <span>↗</span></a></article>
+        <p class="catalog-connection-note" *ngIf="wordpressContentLoading()">Carregando conteúdo atualizado do WordPress…</p>
+        <p class="catalog-connection-note catalog-connection-warning" *ngIf="wordpressContentError()">{{ wordpressContentError() }}</p>
+        <div class="partner-grid" *ngIf="wordpressPartners().length">
+          <article class="partner-card" *ngFor="let partner of wordpressPartners()">
+            <div class="partner-art" [style.backgroundImage]="partner.image ? 'linear-gradient(180deg, transparent, #000b), url(' + partner.image + ')' : 'linear-gradient(135deg,#252525,#111)'">
+              <span>{{ partner.label }}</span><small>{{ partner.name }}</small>
+            </div>
+            <h3>{{ partner.name }}</h3><p>{{ partner.description }}</p>
+            <a class="outline-cta" [href]="partner.url" target="_blank" rel="noopener noreferrer">SAIBA MAIS <span>↗</span></a>
+          </article>
         </div>
       </section>
 
       <section class="content-section affiliate-section" id="afiliados">
-        <div class="affiliate-hero"><p class="section-kicker">INDIQUE &amp; GANHE</p><h2>Seja Nosso <span>Parceiro</span></h2><p>Transparência do início ao fim: acompanhe seus indicados e tenha mais clareza sobre o processo de vendas.</p><a class="gold-cta" href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20saber%20como%20ser%20parceiro%20da%20King%20Shape." target="_blank" rel="noopener">QUERO SER PARCEIRO <span>↗</span></a></div>
-        <div class="affiliate-benefits">
-          <article class="benefit-card"><div class="benefit-art"><span>01</span><b>💸</b></div><h3>Pagamento semanal</h3><p>Consulte as regras e acompanhe os pagamentos do programa de parceiros.</p><a href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Gostaria%20de%20saber%20sobre%20pagamentos%20do%20programa%20de%20parceiros." target="_blank" rel="noopener">SEJA PARCEIRO ↗</a></article>
-          <article class="benefit-card"><div class="benefit-art"><span>02</span><b>✦</b></div><h3>Materiais de marketing</h3><p>Materiais para ajudar você a divulgar a loja e apresentar os produtos.</p><a href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20conhecer%20os%20materiais%20de%20marketing%20para%20parceiros." target="_blank" rel="noopener">SEJA PARCEIRO ↗</a></article>
-          <article class="benefit-card"><div class="benefit-art"><span>03</span><b>♛</b></div><h3>Produtos originais</h3><p>Conheça o catálogo e as informações disponíveis para divulgação.</p><a href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20saber%20mais%20sobre%20os%20produtos%20da%20King%20Shape." target="_blank" rel="noopener">SEJA PARCEIRO ↗</a></article>
-      </div>
+        <div class="affiliate-hero">
+          <p class="section-kicker">{{ affiliateContent().eyebrow || 'INDIQUE & GANHE' }}</p>
+          <h2>{{ affiliateContent().title || 'Seja Nosso Parceiro' }}</h2>
+          <p>{{ affiliateContent().description || 'Conheça o programa de afiliados da King Shape.' }}</p>
+          <a class="gold-cta" [href]="affiliateContent().url || 'https://kingshape.fit/seja-nosso-afiliado/'" target="_blank" rel="noopener noreferrer">{{ affiliateContent().cta || 'SAIBA MAIS' }} <span>↗</span></a>
+        </div>
+        <div class="affiliate-benefits" *ngIf="affiliateContent().items.length">
+          <article class="benefit-card" *ngFor="let item of affiliateContent().items; let i = index">
+            <div class="benefit-art" [class.has-image]="item.image" [style.backgroundImage]="item.image ? 'linear-gradient(180deg,transparent 30%,#000d),url(' + item.image + ')' : null"><span>{{ ('0' + (i + 1)).slice(-2) }}</span><b>✦</b></div>
+            <h3>{{ item.title }}</h3><p>{{ item.description }}</p>
+            <a [href]="item.url || affiliateContent().url || 'https://kingshape.fit/seja-nosso-afiliado/'" target="_blank" rel="noopener noreferrer">SAIBA MAIS ↗</a>
+          </article>
+        </div>
+        <section class="affiliate-how" aria-labelledby="affiliate-how-title">
+          <div class="content-heading"><p class="section-kicker">SIMPLES E TRANSPARENTE</p><h2 id="affiliate-how-title">Como Funciona?</h2><p>Do cadastro ao acompanhamento das suas indicações, tudo em etapas claras.</p></div>
+          <div class="affiliate-steps">
+            <article class="affiliate-step" *ngFor="let step of affiliateContent().steps">
+              <span class="step-number">{{ step.number }}</span><div><h3>{{ step.title }}</h3><p>{{ step.description }}</p><div class="step-tags"><span *ngFor="let tag of step.tags">{{ tag }}</span></div></div>
+            </article>
+            <article class="affiliate-step affiliate-transparency"><span class="step-number">✓</span><div><h3>TRANSPARÊNCIA</h3><p>Você tem acesso a tudo que acontece do começo ao fim.</p><div class="step-tags"><span>Vendas</span><span>Comissões</span></div></div></article>
+          </div>
+        </section>
+        <p class="catalog-connection-note" *ngIf="wordpressContentLoading()">Carregando conteúdo de afiliados do WordPress…</p>
       </section>
       </div>
 
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'seguro'" aria-label="Página de seguro">
       <section class="content-section insurance-section" id="seguro">
-        <div class="insurance-heading"><span class="insurance-pill">🛡️ Proteção Premium</span><h2>Seguro de Entrega King Shape</h2><p>Mais segurança, mais tranquilidade e cobertura para imprevistos no envio do seu pedido.</p></div>
-        <article class="insurance-card"><h3>1. Finalidade do Seguro</h3><p>O <strong>Seguro de Entrega King Shape</strong> foi criado para oferecer proteção adicional à sua compra em situações excepcionais durante o processo de envio.</p><p>A cobertura proposta inclui:</p><ul><li><strong>Extravio da encomenda</strong> durante o transporte por Correios ou transportadora;</li><li><strong>Retenção ou apreensão</strong> por órgãos fiscalizadores, como Receita Federal ou ANVISA.</li></ul><p>Em qualquer uma dessas situações, a King Shape informa que realizará o <strong>reenvio integral dos produtos</strong>, sem custo adicional ao cliente, conforme as condições aplicáveis.</p></article>
-        <article class="insurance-card"><h3>2. Valor do Seguro</h3><p>O Seguro de Entrega possui custo correspondente a <strong>15% do valor total da compra</strong>.</p><p>A contratação é <strong>opcional</strong> e pode ser adicionada pelo cliente no momento da finalização do pedido.</p><p class="insurance-note">💡 Recomendado para quem busca uma camada adicional de proteção no envio.</p></article>
-        <article class="insurance-card"><h3>3. Como contratar</h3><p>Antes de concluir o pedido, fale com o atendimento para confirmar a disponibilidade do seguro, o valor calculado e todas as condições de cobertura.</p><a class="gold-cta" href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20confirmar%20as%20condi%C3%A7%C3%B5es%20do%20Seguro%20de%20Entrega." target="_blank" rel="noopener">CONSULTAR CONDIÇÕES <span>↗</span></a></article>
-        <p class="insurance-disclaimer">As informações desta página são ilustrativas e devem ser confirmadas com a King Shape antes da contratação. Solicite os termos completos, as exclusões e as condições aplicáveis ao seu pedido.</p>
+        <div class="insurance-heading">
+          <span class="insurance-pill">{{ insuranceContent().badge || '🛡️ Proteção Premium' }}</span>
+          <h2>{{ insuranceContent().title || 'Seguro de Entrega King Shape' }}</h2>
+          <p>{{ insuranceContent().subtitle || 'Mais segurança, mais tranquilidade e cobertura para imprevistos no envio do seu pedido.' }}</p>
+        </div>
+        <article class="insurance-card" *ngFor="let card of insuranceContent().cards">
+          <h3>{{ card.title }}</h3>
+          <div class="wp-content-text" [innerHTML]="card.html"></div>
+        </article>
+        <div class="insurance-card" *ngIf="!insuranceContent().cards.length && wordpressContentLoading()">Carregando os termos oficiais do WordPress…</div>
+        <p class="insurance-disclaimer" *ngIf="insuranceContent().summary">{{ insuranceContent().summary }}</p>
+        <p class="catalog-connection-note catalog-connection-warning" *ngIf="wordpressContentError()">{{ wordpressContentError() }}</p>
       </section>
 
       </div>
@@ -145,7 +180,22 @@ type CartItem = { product: Product; qty: number };
       <div class="cart-empty" *ngIf="cartItems().length === 0"><div class="empty-bag">♧</div><h3>Seu carrinho está vazio</h3><p>Explore o catálogo e adicione seus produtos favoritos.</p><button class="add-button" (click)="navigateTo('catalogo')">Ver produtos</button></div>
       <div class="cart-items" *ngIf="cartItems().length">
         <div class="cart-item" *ngFor="let item of cartItems()"><img [src]="item.product.image" [alt]="item.product.name" loading="eager" decoding="async" (error)="onImageError($event)"><div class="cart-item-info"><h3>{{ item.product.name }}</h3><strong class="cart-item-price">R$ {{ item.product.price | number:'1.2-2':'pt-BR' }}</strong><div class="qty-control"><button (click)="changeQty(item.product.id,-1)" aria-label="Diminuir quantidade">−</button><span>{{ item.qty }}</span><button (click)="changeQty(item.product.id,1)" aria-label="Aumentar quantidade">+</button></div></div><button class="remove-item" (click)="removeFromCart(item.product.id)" aria-label="Remover produto">×</button></div>
-        <div class="cart-summary"><div class="subtotal-line"><span>Subtotal</span><strong>R$ {{ cartTotal() | number:'1.2-2':'pt-BR' }}</strong></div><p>Frete e disponibilidade serão confirmados pelo atendimento.</p><button class="checkout-button" (click)="checkout()">Pedir pelo WhatsApp <span>→</span></button><small>O pedido será enviado ao WhatsApp para confirmação comercial.</small></div>
+        <div class="cart-summary">
+          <div class="subtotal-line"><span>Produtos</span><strong>R$ {{ cartTotal() | number:'1.2-2':'pt-BR' }}</strong></div>
+          <section class="cart-option-card">
+            <label for="cart-coupon">Cupom de desconto</label>
+            <div class="cart-coupon-row"><input id="cart-coupon" name="cartCoupon" [(ngModel)]="affiliateCoupon" (ngModelChange)="couponFeedback.set('')" placeholder="Digite seu cupom" autocapitalize="characters"><button type="button" (click)="checkCouponFormat()">Aplicar</button></div>
+            <p class="cart-option-note" *ngIf="!couponFeedback()">O cupom será validado pela loja ao registrar o pedido.</p><p class="cart-option-note" *ngIf="couponFeedback()">{{ couponFeedback() }}</p>
+          </section>
+          <section class="cart-option-card">
+            <label for="cart-state">Estado para entrega</label>
+            <select id="cart-state" name="shippingState" [(ngModel)]="shippingState"><option value="">Selecione seu estado</option><option *ngFor="let state of brazilStates" [value]="state.code">{{ state.name }}</option></select>
+            <p class="cart-option-note">O frete será confirmado pelo atendimento conforme o destino e os produtos.</p>
+            <div class="cart-insurance-box"><label class="cart-insurance-label"><input type="checkbox" [(ngModel)]="shippingInsurance" name="shippingInsurance"> Quero incluir seguro da encomenda (15%)</label><p>O seguro é opcional. Consulte as condições na página Seguro.</p><div class="subtotal-line"><span>Total sem seguro</span><strong>R$ {{ cartTotal() | number:'1.2-2':'pt-BR' }}</strong></div><div class="subtotal-line"><span>Total com seguro (15%)</span><strong>R$ {{ cartTotal() * 1.15 | number:'1.2-2':'pt-BR' }}</strong></div><small>Valores estimados, sem frete. O cupom e o seguro serão confirmados na finalização.</small></div>
+          </section>
+          <div class="subtotal-line cart-final-total"><span>Total estimado {{ shippingInsurance ? 'com seguro' : 'sem seguro' }}</span><strong>R$ {{ estimatedCartTotal() | number:'1.2-2':'pt-BR' }}</strong></div>
+          <p>Frete e disponibilidade serão confirmados pelo atendimento.</p><button class="checkout-button" (click)="checkout()">Pedir pelo WhatsApp <span>→</span></button><small>O pedido será registrado como pendente e enviado ao WhatsApp para confirmação comercial.</small>
+        </div>
       </div>
     </aside>
     <div class="checkout-overlay" *ngIf="checkoutOpen()" (click)="checkoutOpen.set(false)"></div>
@@ -196,14 +246,127 @@ export class AppComponent {
   checkoutOpen = signal(false);
   checkoutSubmitting = signal(false);
   checkoutError = signal('');
-  customerName = ''; customerPhone = ''; customerEmail = ''; customerCep = ''; addressNumber = ''; customerAddress = ''; affiliateCoupon = '';
+  customerName = ''; customerPhone = ''; customerEmail = ''; customerCep = ''; addressNumber = ''; customerAddress = ''; affiliateCoupon = ''; shippingState = ''; shippingInsurance = false;
+  couponFeedback = signal('');
+  brazilStates = [{code:'AC',name:'Acre'},{code:'AL',name:'Alagoas'},{code:'AP',name:'Amapá'},{code:'AM',name:'Amazonas'},{code:'BA',name:'Bahia'},{code:'CE',name:'Ceará'},{code:'DF',name:'Distrito Federal'},{code:'ES',name:'Espírito Santo'},{code:'GO',name:'Goiás'},{code:'MA',name:'Maranhão'},{code:'MT',name:'Mato Grosso'},{code:'MS',name:'Mato Grosso do Sul'},{code:'MG',name:'Minas Gerais'},{code:'PA',name:'Pará'},{code:'PB',name:'Paraíba'},{code:'PR',name:'Paraná'},{code:'PE',name:'Pernambuco'},{code:'PI',name:'Piauí'},{code:'RJ',name:'Rio de Janeiro'},{code:'RN',name:'Rio Grande do Norte'},{code:'RS',name:'Rio Grande do Sul'},{code:'RO',name:'Rondônia'},{code:'RR',name:'Roraima'},{code:'SC',name:'Santa Catarina'},{code:'SP',name:'São Paulo'},{code:'SE',name:'Sergipe'},{code:'TO',name:'Tocantins'}];
   favorites = signal<number[]>([]);
   productQuantities = signal<Record<number, number>>({});
   products = signal<Product[]>([]);
   catalogSource = signal<'loading' | 'king-shape' | 'woocommerce' | 'fallback'>('loading');
   catalogMessage = signal('Conectando ao catálogo da loja…');
   cartItems = signal<CartItem[]>(this.restoreCart());
-  constructor() { void this.loadWooCommerceCatalog(); }
+  wordpressPartners = signal<WordPressPartner[]>([]);
+  insuranceContent = signal<{ badge: string; title: string; subtitle: string; cards: WordPressInsuranceCard[]; summary: string }>({ badge: '', title: '', subtitle: '', cards: [], summary: '' });
+  affiliateContent = signal<WordPressAffiliateContent>({ eyebrow: '', title: '', description: '', cta: '', url: '', items: [], steps: [] });
+  wordpressContentLoading = signal(true);
+  wordpressContentError = signal('');
+
+  constructor() { void this.loadWooCommerceCatalog(); void this.loadWordPressContent(); }
+
+  private async loadWordPressContent() {
+    const api = 'https://kingshape.fit/wp-json/wp/v2';
+    try {
+      const [partnersResponse, insuranceResponse, affiliateResponse] = await Promise.all([
+        fetch(`${api}/pages/209`, { headers: { Accept: 'application/json' } }),
+        fetch(`${api}/pages/789`, { headers: { Accept: 'application/json' } }),
+        fetch(`${api}/pages?slug=seja-nosso-afiliado`, { headers: { Accept: 'application/json' } })
+      ]);
+      if (!partnersResponse.ok || !insuranceResponse.ok) throw new Error('O WordPress não conseguiu fornecer as páginas de parceiros e seguro.');
+      const partnersPage = await partnersResponse.json() as WordPressPage;
+      const insurancePage = await insuranceResponse.json() as WordPressPage;
+      const affiliatePages = affiliateResponse.ok ? await affiliateResponse.json() as WordPressPage[] : [];
+      this.parsePartners(partnersPage.content?.rendered || '');
+      this.parseInsurance(insurancePage.content?.rendered || '');
+      if (affiliatePages.length) this.parseAffiliate(affiliatePages[0]);
+      else {
+        // A página de apresentação de afiliados pode usar outro slug; tenta localizar pelo título.
+        const allResponse = await fetch(`${api}/pages?search=afiliado&per_page=100`, { headers: { Accept: 'application/json' } });
+        if (allResponse.ok) {
+          const pages = await allResponse.json() as WordPressPage[];
+          const page = pages.find(p => /seja-nosso-afiliado|cadastro-afiliado/i.test(p.slug)) || pages.find(p => /afiliado/i.test(p.title?.rendered || ''));
+          if (page) this.parseAffiliate(page);
+        }
+      }
+    } catch (error) {
+      console.warn('King Shape: falha ao carregar páginas do WordPress.', error);
+      this.wordpressContentError.set('Não foi possível carregar algum conteúdo do WordPress. Tente atualizar a página.');
+    } finally {
+      this.wordpressContentLoading.set(false);
+    }
+  }
+
+  private parsePartners(html: string) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const cards = Array.from(doc.querySelectorAll('.partners .partner-card, .partner-card'));
+    const parsed = cards.map((card, index) => {
+      const name = card.querySelector('h2, h3, h4')?.textContent?.trim() || `Parceiro ${index + 1}`;
+      const description = Array.from(card.querySelectorAll('p')).map(p => p.textContent?.trim()).filter(Boolean).join(' ');
+      const image = card.querySelector('img')?.getAttribute('src') || '';
+      const url = card.querySelector('a[href]')?.getAttribute('href') || 'https://kingshape.fit/parceiros/';
+      const label = card.querySelector('span, small')?.textContent?.trim() || name.split(/\s+/)[0].toUpperCase();
+      return { name, description, image, url, label };
+    }).filter(p => p.name && p.name !== 'Parceiro');
+    this.wordpressPartners.set(parsed);
+  }
+
+  private parseInsurance(html: string) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const section = doc.querySelector('.ks-insurance') || doc.body;
+    const title = section.querySelector('h2')?.textContent?.trim() || 'Seguro de Entrega King Shape';
+    const subtitle = section.querySelector('.ks-subtitle')?.textContent?.trim() || '';
+    const badge = section.querySelector('.ks-badge')?.textContent?.trim() || '';
+    const cards = Array.from(section.querySelectorAll('.ks-card')).map(card => ({
+      title: card.querySelector('h3')?.textContent?.trim() || '',
+      html: Array.from(card.children).filter(child => child.tagName !== 'H3').map(child => child.outerHTML).join('')
+    })).filter(card => card.title);
+    const summary = section.querySelector('.ks-highlight')?.textContent?.trim() || '';
+    this.insuranceContent.set({ badge, title, subtitle, cards, summary });
+  }
+
+  private parseAffiliate(page: WordPressPage) {
+    const doc = new DOMParser().parseFromString(page.content?.rendered || '', 'text/html');
+    const whatsapp = 'https://wa.me/5511912355630?text=Ol%C3%A1%2C%20desejo%20ser%20um%20Parceiro%20da%20King%20Shape.';
+
+    // A página do Elementor usa blocos HTML personalizados, então a busca genérica por
+    // article/elementor-icon-box não encontrava todos os benefícios. Mantemos o conteúdo
+    // completo confirmado pelo WordPress como estrutura de renderização nativa Angular.
+    const mediaUrls = (() => { const found: string[] = []; doc.querySelectorAll('img[src], img[data-src], [style], [data-settings], style').forEach((el: Element) => { const img = el as HTMLImageElement; const direct = img.getAttribute('src') || img.getAttribute('data-src') || ''; if (/^https?:\/\//i.test(direct)) found.push(direct); const raw = [el.getAttribute('style') || '', el.getAttribute('data-settings') || '', el.tagName.toLowerCase() === 'style' ? el.textContent || '' : ''].join(' '); const re = /https?:\/\/[^\s\"'()]+?\.(?:webp|png|jpe?g|avif)(?:\?[^\s\"'()]*)?/ig; let match: RegExpExecArray | null; while ((match = re.exec(raw))) found.push(match[0]); }); return found.filter((url, index, all) => all.indexOf(url) === index); })();
+    const items = [
+      { title: 'PAINEL DE INDICAÇÃO', description: 'Tenha acesso a tudo.', url: whatsapp, image: mediaUrls[0] || '' },
+      { title: 'COMISSÃO ATRATIVA', image: mediaUrls[1] || '', description: 'Comissão em tudo.', url: whatsapp },
+      { title: 'PAGAMENTO SEMANAL', image: mediaUrls[2] || '', description: 'Receba toda sexta-feira.', url: whatsapp },
+      { title: 'MATERIAIS DE MARKETING', image: mediaUrls[3] || '', description: 'Materiais bem estruturados.', url: whatsapp },
+      { title: 'PRODUTOS ORIGINAIS', image: mediaUrls[4] || '', description: 'Qualidade em primeiro lugar.', url: whatsapp },
+      { title: 'ATENDIMENTO PERSONALIZADO', image: mediaUrls[5] || '', description: 'Todos os clientes bem atendidos.', url: whatsapp },
+      { title: 'Linha Premium', image: mediaUrls[6] || '', description: 'King Shape Cooper Pharma, ZPHCD, Eminence, Pharmacom, Alpha Pharma, Royal Pharmaceuthical e Canadá Labs.', url: whatsapp },
+      { title: 'Tradicionais', image: mediaUrls[7] || '', description: 'King Shape Landerlan, Lander Gold, Muscle Pharma, King Pharma, American Plus e Roid Company.', url: whatsapp },
+      { title: 'Peptídeos', image: mediaUrls[8] || '', description: 'King Shape: um oceano de possibilidades com a Neuroceptix, Bletter e outros laboratórios conceituados.', url: whatsapp },
+      { title: 'Emagrecedores', image: mediaUrls[9] || '', description: 'King Shape TG, Lipoless, Lipoland, Tirzec e Retatrutida dos melhores laboratórios do mundo.', url: whatsapp }
+    ];
+
+    const mainLink = doc.querySelector('a[href^="https://wa.me/"]') as HTMLAnchorElement | null;
+    const headingText = doc.querySelector('h1, h2, h3')?.textContent?.trim() || '';
+    const paragraphText = Array.from(doc.querySelectorAll('p'))
+      .map(p => p.textContent?.replace(/\s+/g, ' ').trim())
+      .find(p => !!p && /transparência do início ao fim/i.test(p)) ||
+      'Transparência do início ao fim, aqui você não fica no boca a boca, você enxerga seus indicados e tudo que está acontecendo no processo de vendas.';
+
+    this.affiliateContent.set({
+      eyebrow: 'INDIQUE & GANHE',
+      title: /seja nosso parceiro/i.test(headingText) ? headingText : 'Indique & Ganhe Seja Nosso Parceiro',
+      description: paragraphText,
+      cta: mainLink?.textContent?.replace(/↗/g, '').trim() || 'QUERO SER PARCEIRO',
+      url: mainLink?.href || whatsapp,
+      items,
+      steps: [
+        { number: '01', title: 'ENVIE INFORMAÇÕES', description: 'Nos conte sobre o trabalho que você desenvolve e como pretende divulgar.', tags: ['Perfil + canais', 'Público-alvo'] },
+        { number: '02', title: 'CADASTRO APROVADO', description: 'Após análise, seu cadastro é criado e seu acesso é liberado.', tags: ['Aprovação rápida', 'Acesso painel'] },
+        { number: '03', title: 'DIVULGUE SEU LINK', description: 'Você recebe um link exclusivo para rastrear indicações com segurança.', tags: ['Link único', 'Rastreamento'] },
+        { number: '04', title: 'RECEBA COMISSÕES', description: 'Receba por cada venda realizada através do seu link.', tags: ['Transparência total', 'Histórico ganhos'] },
+        { number: '05', title: 'PAINEL DE CONTROLE', description: 'Controle cliques, cadastros, vendas e comissões em tempo real.', tags: ['Métricas real', 'Tudo centralizado'] }
+      ]
+    });
+  }
   private async loadWooCommerceCatalog() {
     // O catálogo oficial da King Shape é o CPT ksa_product, servido pela API própria.
     // Em desenvolvimento local, consulta o WordPress de produção para evitar depender de uma instalação local.
@@ -297,6 +460,9 @@ export class AppComponent {
   focusSearch() { if (this.activePage() !== 'catalogo') this.navigateTo('catalogo'); setTimeout(() => { document.querySelector<HTMLInputElement>('.search-box input')?.focus(); document.querySelector('.toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80); }
   showAccountMessage() { this.showToast('Área do cliente será conectada em uma próxima etapa'); }
 
+  estimatedCartTotal() { return this.cartTotal() * (this.shippingInsurance ? 1.15 : 1); }
+  checkCouponFormat() { this.couponFeedback.set(this.affiliateCoupon.trim() ? 'Cupom informado. A validade e o desconto serão confirmados pela loja ao finalizar o pedido.' : 'Digite um cupom para continuar.'); }
+
   checkout() {
     if (this.catalogSource() !== 'woocommerce') { this.showToast('Catálogo conectado. O checkout precisa ser integrado à API KSA antes de registrar pedidos.'); return; }
     if (!this.cartItems().length) {
@@ -329,9 +495,11 @@ export class AppComponent {
         body: JSON.stringify({
           customer: {
             name: this.customerName.trim(), phone: this.customerPhone.trim(), email: this.customerEmail.trim(),
-            postcode: this.customerCep.trim(), address: this.customerAddress.trim(), address_number: this.addressNumber.trim()
+            postcode: this.customerCep.trim(), address: this.customerAddress.trim(), address_number: this.addressNumber.trim(), state: this.shippingState
           },
           coupon_code: this.affiliateCoupon.trim().toUpperCase(),
+          shipping_state: this.shippingState,
+          shipping_insurance: this.shippingInsurance,
           items: items.map(({ product, qty }) => ({ woocommerce_product_id: product.id, product_id: product.id, quantity: qty }))
         })
       });
@@ -350,6 +518,8 @@ export class AppComponent {
         `WhatsApp: ${this.customerPhone.trim()}`,
         ...(this.customerEmail.trim() ? [`E-mail: ${this.customerEmail.trim()}`] : []),
         ...(this.customerCep.trim() ? [`CEP: ${this.customerCep.trim()}`] : []),
+        ...(this.shippingState ? [`Estado de entrega: ${this.shippingState}`] : []),
+        `Seguro da encomenda: ${this.shippingInsurance ? 'Sim (15%)' : 'Não'}`, 
         ...(this.customerAddress.trim() ? [`Endereço: ${this.customerAddress.trim()}`] : []),
         ...(this.addressNumber.trim() ? [`Número: ${this.addressNumber.trim()}`] : []),
         ...(order.coupon ? [`Cupom aplicado: ${order.coupon}`] : []), '',

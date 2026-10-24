@@ -102,3 +102,11 @@ Os arquivos em `src/assets` agora são publicados pelo Angular em `/assets`. Se 
 5. Para validar atualizações e cache, teste com DevTools → Application → Manifest/Service Workers.
 
 **Limitações atuais:** não está publicada na internet e não foi possível validar o build nesta execução porque a instalação das dependências excedeu o tempo disponível. A instalação da PWA exige que a versão de produção seja servida por HTTPS, exceto em `localhost`. O catálogo continua demonstrativo; não armazene preços/estoque como definitivos no cache offline.
+
+
+## Conteúdo WordPress dinâmico — v1.5.19
+- A aba Parceiros carrega os cards da página WordPress ID 209.
+- A aba Seguro carrega título, subtítulo, termos e resumo da página WordPress ID 789.
+- A área Afiliados procura a página pública `seja-nosso-afiliado` pela REST API e extrai título, descrição, links e blocos de conteúdo.
+- O conteúdo é adaptado para o layout nativo Angular; scripts e estilos do Elementor não são executados dentro do aplicativo.
+- Se a página de afiliados tiver outro slug, o app tenta localizar páginas públicas pelo termo “afiliado”.
