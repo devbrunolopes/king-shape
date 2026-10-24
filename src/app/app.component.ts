@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-type Product = { id: number; brand: string; name: string; category: string; type: string; shipping: string[]; price: number; oldPrice?: number; available: boolean; premium?: boolean; image: string; badge?: string; };
+type Product = { id: number; brand: string; name: string; category: string; type: string; shipping: string[]; price: number; oldPrice?: number; available: boolean; premium?: boolean; image: string; badge?: string; sku?: string; };
+type KingShapeApiProduct = { id: number; name: string; sku?: string; brand?: string; category?: string; type?: string; note?: string; card_label?: string; featured?: boolean; pinned?: boolean; hidden?: boolean; schedule?: boolean; display_start?: string; display_end?: string; price?: number | string; status?: string; delivery?: string[]; image?: string; };
+type KingShapeApiResponse = { products?: KingShapeApiProduct[]; page?: number; total?: number; pages?: number };
+type WooStoreProduct = { id: number; name: string; slug?: string; sku?: string; prices?: { price?: string; regular_price?: string; sale_price?: string; currency_minor_unit?: number }; images?: { src?: string; alt?: string }[]; categories?: { name?: string }[]; attributes?: { name?: string; terms?: { name?: string }[] }[]; is_in_stock?: boolean; is_purchasable?: boolean; on_sale?: boolean; };
 type CartItem = { product: Product; qty: number };
 
 @Component({
@@ -11,15 +14,15 @@ type CartItem = { product: Product; qty: number };
     <header class="topbar" id="top">
       <button class="icon-button menu-button" aria-label="Abrir menu" (click)="menuOpen.set(!menuOpen())">☰</button>
       <a class="brand" href="javascript:void(0)" (click)="navigateTo('catalogo')" aria-label="King Shape início"><img class="brand-logo" src="assets/king-shape-logo.jpg" alt="Símbolo King Shape"><img class="brand-wordmark-image" src="assets/king-shape-wordmark.png" alt="KINGSHAPE"></a>
-      <nav class="desktop-nav" aria-label="Navegação principal"><button [class.active]="activePage() === 'catalogo'" (click)="navigateTo('catalogo')">Produtos</button><button [class.active]="activePage() === 'parceiros'" (click)="navigateTo('parceiros')">Parceiros</button><button [class.active]="activePage() === 'afiliados'" (click)="navigateTo('afiliados')">Seja Nosso Afiliado</button><button [class.active]="activePage() === 'seguro'" (click)="navigateTo('seguro')">Seguro</button></nav>
+      <nav class="desktop-nav" aria-label="Navegação principal"><button [class.active]="activePage() === 'catalogo'" (click)="navigateTo('catalogo')">Produtos</button><button [class.active]="activePage() === 'ofertas'" (click)="navigateTo('ofertas')">Ofertas</button><button [class.active]="activePage() === 'parceiros'" (click)="navigateTo('parceiros')">Parceiros e Afiliados</button><button [class.active]="activePage() === 'seguro'" (click)="navigateTo('seguro')">Seguro</button></nav>
       <div class="header-actions"><button class="header-action search-action" aria-label="Buscar produtos" (click)="focusSearch()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg></button><button class="header-action account-action" aria-label="Minha conta" title="Minha conta" (click)="showAccountMessage()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2z"></path></svg></button><button class="header-action cart-head" aria-label="Abrir carrinho" (click)="cartOpen.set(true)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h2l2.4 12.2a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 1.9-1.4L22 8H5"></path><circle cx="9" cy="21" r="1"></circle><circle cx="18" cy="21" r="1"></circle></svg><b>{{ cartCount() }}</b></button></div>
     </header>
-    <div class="menu-panel" *ngIf="menuOpen()"><button (click)="navigateTo('catalogo')">Produtos</button><button (click)="navigateTo('parceiros')">Parceiros</button><button (click)="navigateTo('afiliados')">Seja Nosso Afiliado</button><button (click)="navigateTo('seguro')">Seguro</button><button (click)="cartOpen.set(true); menuOpen.set(false)">Meu carrinho</button></div>
+    <div class="menu-panel" *ngIf="menuOpen()"><button (click)="navigateTo('catalogo')">Produtos</button><button (click)="navigateTo('ofertas')">Ofertas</button><button (click)="navigateTo('parceiros')">Parceiros e Afiliados</button><button (click)="cartOpen.set(true); menuOpen.set(false)">Meu carrinho</button><button (click)="navigateTo('seguro')">Seguro</button></div>
     <nav class="mobile-tabbar" aria-label="Navegação do aplicativo">
       <button class="tab-item" [class.active]="activePage() === 'catalogo'" (click)="navigateTo('catalogo')"><span class="tab-icon">⌂</span><span>Produtos</span></button>
-      <button class="tab-item" [class.active]="activePage() === 'parceiros'" (click)="navigateTo('parceiros')"><span class="tab-icon">♧</span><span>Parceiros</span></button>
+      <button class="tab-item" [class.active]="activePage() === 'ofertas'" (click)="navigateTo('ofertas')"><span class="tab-icon">％</span><span>Ofertas</span></button>
       <button class="tab-item tab-cart" [class.active]="cartOpen()" (click)="cartOpen.set(true)" aria-label="Abrir carrinho"><span class="tab-icon tab-cart-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h2l2.4 12.2a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 1.9-1.4L22 8H5"></path><circle cx="9" cy="21" r="1"></circle><circle cx="18" cy="21" r="1"></circle></svg><i>{{ cartCount() }}</i></span><span>Carrinho</span></button>
-      <button class="tab-item" [class.active]="activePage() === 'afiliados'" (click)="navigateTo('afiliados')"><span class="tab-icon">✦</span><span>Afiliados</span></button>
+      <button class="tab-item" [class.active]="activePage() === 'parceiros'" (click)="navigateTo('parceiros')"><span class="tab-icon">♧</span><span>Parceiros</span></button>
       <button class="tab-item" [class.active]="activePage() === 'seguro'" (click)="navigateTo('seguro')"><span class="tab-icon">◇</span><span>Seguro</span></button>
     </nav>
 
@@ -28,7 +31,7 @@ type CartItem = { product: Product; qty: number };
 
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'catalogo'" aria-label="Página de produtos">
       <section class="catalog-head" id="catalogo">
-        <div><p class="section-kicker">EXPLORE A LOJA</p><h2>Catálogo <span>de produtos</span></h2><p class="muted">{{ filteredProducts().length }} produtos encontrados</p></div>
+        <div><p class="section-kicker">EXPLORE A LOJA</p><h2>Catálogo <span>de produtos</span></h2><p class="muted">{{ filteredProducts().length }} produtos encontrados</p><p class="catalog-connection-note" [class.catalog-connection-warning]="catalogSource() === 'fallback'">{{ catalogMessage() }}</p></div>
         <button class="filter-toggle" (click)="filtersOpen.set(!filtersOpen())">☷ <span>Filtrar</span><span class="filter-count" *ngIf="activeFilterCount()">{{ activeFilterCount() }}</span></button>
       </section>
 
@@ -38,7 +41,7 @@ type CartItem = { product: Product; qty: number };
       </section>
 
       <section class="filters" *ngIf="filtersOpen()">
-        <label>Categoria<select [(ngModel)]="category"><option value="all">Todas as categorias</option><option value="Injetáveis">Injetáveis</option><option value="Suplementos">Suplementos</option><option value="Acessórios">Acessórios</option></select></label>
+        <label>Categoria<select [(ngModel)]="category"><option value="all">Todas as categorias</option><option *ngFor="let categoryName of categories()" [value]="categoryName">{{ categoryName }}</option></select></label>
         <label>Disponibilidade<select [(ngModel)]="availability"><option value="all">Todos</option><option value="available">Disponíveis</option><option value="unavailable">Indisponíveis</option></select></label>
         <label>Tipo<select [(ngModel)]="typeFilter"><option value="all">Todos os tipos</option><option value="Injetáveis">Injetáveis</option><option value="Oral">Oral</option><option value="Acessório">Acessório</option></select></label>
         <label>Marca<select [(ngModel)]="brandFilter"><option value="all">Todas as marcas</option><option *ngFor="let brand of brands()" [value]="brand">{{ brand }}</option></select></label>
@@ -64,13 +67,43 @@ type CartItem = { product: Product; qty: number };
               <strong>R$ {{ product.price | number:'1.2-2':'pt-BR' }}</strong>
               <del *ngIf="product.oldPrice">R$ {{ product.oldPrice | number:'1.2-2':'pt-BR' }}</del>
             </div>
-            <button class="add-button" [disabled]="!product.available" (click)="addToCart(product)"><span>Adicionar</span><span class="add-plus">+</span></button>
+            <div class="product-purchase-row"><div class="product-qty-control" role="group" [attr.aria-label]="'Quantidade de ' + product.name"><button type="button" (click)="changeProductQty(product.id,-1)" [disabled]="selectedProductQty(product.id) <= 1" [attr.aria-label]="'Diminuir quantidade de ' + product.name">−</button><span>{{ selectedProductQty(product.id) }}</span><button type="button" (click)="changeProductQty(product.id,1)" [disabled]="!product.available" [attr.aria-label]="'Aumentar quantidade de ' + product.name">+</button></div><button class="add-button" [disabled]="!product.available" (click)="addToCart(product, selectedProductQty(product.id))"><span>Adicionar</span><span class="add-plus">+</span></button></div>
           </div>
         </article>
       </section>
       <ng-template #emptyState><div class="empty-state"><span>⌕</span><h3>Nenhum produto encontrado</h3><p>Tente mudar a busca ou remover os filtros.</p><button class="clear-filters" (click)="clearFilters()">Limpar busca e filtros</button></div></ng-template>
 
       </div>
+      <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'ofertas'" aria-label="Página de ofertas">
+        <section class="catalog-head" id="ofertas">
+          <div><p class="section-kicker">OFERTAS KING SHAPE</p><h2>Ofertas <span>especiais</span></h2><p class="muted">{{ offerProducts().length }} produtos promocionais encontrados</p><p class="catalog-connection-note" [class.catalog-connection-warning]="catalogSource() === 'fallback'">{{ catalogMessage() }}</p></div>
+          <span class="offers-heading-mark" aria-hidden="true">％</span>
+        </section>
+        <section class="toolbar">
+          <label class="search-box"><span>⌕</span><input [(ngModel)]="search" placeholder="Buscar oferta ou marca..." aria-label="Buscar oferta ou marca"></label>
+          <label class="sort-box"><span>Ordenar</span><select [(ngModel)]="sortBy" aria-label="Ordenar ofertas"><option value="featured">Destaques</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option><option value="name">Nome A–Z</option></select></label>
+        </section>
+        <div class="results-row"><span>Mostrando <b>{{ offerProducts().length }}</b> ofertas</span><div class="view-switch"><span class="view-label">Visualização</span><button class="view-button" [class.active]="viewMode() === 'grid'" aria-label="Visualizar ofertas em cards" (click)="viewMode.set('grid')">▦ <span>Cards</span></button><button class="view-button" [class.active]="viewMode() === 'list'" aria-label="Visualizar ofertas em lista" (click)="viewMode.set('list')">☰ <span>Lista</span></button></div></div>
+        <section class="product-grid" [class.list-view]="viewMode() === 'list'" *ngIf="offerProducts().length; else noOffers">
+          <article class="product-card offer-product-card" *ngFor="let product of offerProducts(); trackBy: trackProduct">
+            <div class="product-image-wrap">
+              <span class="product-badge">{{ product.badge || 'OFERTA' }}</span>
+              <button class="favorite" aria-label="Favoritar oferta" (click)="toggleFavorite(product.id)" [class.favorited]="favorites().includes(product.id)">{{ favorites().includes(product.id) ? '♥' : '♡' }}</button>
+              <img [src]="product.image" [alt]="product.name" loading="eager" decoding="async" (error)="onImageError($event)">
+            </div>
+            <div class="product-info">
+              <div class="product-brand">{{ product.brand }}</div>
+              <h3>{{ product.name }}</h3>
+              <div class="tags"><span class="tag tag-premium">Oferta</span><span class="tag tag-muted">{{ product.type }}</span></div>
+              <div class="availability" [class.unavailable]="!product.available"><i></i>{{ product.available ? 'Disponível' : 'Indisponível' }}</div>
+              <div class="product-price"><strong>R$ {{ product.price | number:'1.2-2':'pt-BR' }}</strong><del>R$ {{ product.oldPrice | number:'1.2-2':'pt-BR' }}</del></div>
+              <div class="product-purchase-row"><div class="product-qty-control" role="group" [attr.aria-label]="'Quantidade de ' + product.name"><button type="button" (click)="changeProductQty(product.id,-1)" [disabled]="selectedProductQty(product.id) <= 1" [attr.aria-label]="'Diminuir quantidade de ' + product.name">−</button><span>{{ selectedProductQty(product.id) }}</span><button type="button" (click)="changeProductQty(product.id,1)" [disabled]="!product.available" [attr.aria-label]="'Aumentar quantidade de ' + product.name">+</button></div><button class="add-button" [disabled]="!product.available" (click)="addToCart(product, selectedProductQty(product.id))"><span>Adicionar</span><span class="add-plus">+</span></button></div>
+            </div>
+          </article>
+        </section>
+        <ng-template #noOffers><div class="empty-state"><h3>Nenhuma oferta encontrada</h3><p>Confira novamente em breve ou veja todos os produtos.</p><button class="clear-filters" (click)="search=''; navigateTo('catalogo')">Ver produtos</button></div></ng-template>
+      </div>
+
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'parceiros'" aria-label="Página de parceiros">
       <section class="content-section partners-section" id="parceiros">
         <div class="content-heading"><p class="section-kicker">PARCEIROS</p><h2>Recomendamos</h2><p>Conheça profissionais e conteúdos que fazem parte da comunidade King Shape.</p></div>
@@ -81,18 +114,16 @@ type CartItem = { product: Product; qty: number };
         </div>
       </section>
 
-      </div>
-      <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'afiliados'" aria-label="Página de afiliados">
       <section class="content-section affiliate-section" id="afiliados">
         <div class="affiliate-hero"><p class="section-kicker">INDIQUE &amp; GANHE</p><h2>Seja Nosso <span>Parceiro</span></h2><p>Transparência do início ao fim: acompanhe seus indicados e tenha mais clareza sobre o processo de vendas.</p><a class="gold-cta" href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20saber%20como%20ser%20parceiro%20da%20King%20Shape." target="_blank" rel="noopener">QUERO SER PARCEIRO <span>↗</span></a></div>
         <div class="affiliate-benefits">
           <article class="benefit-card"><div class="benefit-art"><span>01</span><b>💸</b></div><h3>Pagamento semanal</h3><p>Consulte as regras e acompanhe os pagamentos do programa de parceiros.</p><a href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Gostaria%20de%20saber%20sobre%20pagamentos%20do%20programa%20de%20parceiros." target="_blank" rel="noopener">SEJA PARCEIRO ↗</a></article>
           <article class="benefit-card"><div class="benefit-art"><span>02</span><b>✦</b></div><h3>Materiais de marketing</h3><p>Materiais para ajudar você a divulgar a loja e apresentar os produtos.</p><a href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20conhecer%20os%20materiais%20de%20marketing%20para%20parceiros." target="_blank" rel="noopener">SEJA PARCEIRO ↗</a></article>
           <article class="benefit-card"><div class="benefit-art"><span>03</span><b>♛</b></div><h3>Produtos originais</h3><p>Conheça o catálogo e as informações disponíveis para divulgação.</p><a href="https://wa.me/5511941749894?text=Ol%C3%A1%21%20Quero%20saber%20mais%20sobre%20os%20produtos%20da%20King%20Shape." target="_blank" rel="noopener">SEJA PARCEIRO ↗</a></article>
-        </div>
-      </section>
-
       </div>
+      </section>
+      </div>
+
       <div class="app-page" [class.page-enter]="pageTransition()" *ngIf="activePage() === 'seguro'" aria-label="Página de seguro">
       <section class="content-section insurance-section" id="seguro">
         <div class="insurance-heading"><span class="insurance-pill">🛡️ Proteção Premium</span><h2>Seguro de Entrega King Shape</h2><p>Mais segurança, mais tranquilidade e cobertura para imprevistos no envio do seu pedido.</p></div>
@@ -117,14 +148,39 @@ type CartItem = { product: Product; qty: number };
         <div class="cart-summary"><div class="subtotal-line"><span>Subtotal</span><strong>R$ {{ cartTotal() | number:'1.2-2':'pt-BR' }}</strong></div><p>Frete e disponibilidade serão confirmados pelo atendimento.</p><button class="checkout-button" (click)="checkout()">Pedir pelo WhatsApp <span>→</span></button><small>O pedido será enviado ao WhatsApp para confirmação comercial.</small></div>
       </div>
     </aside>
+    <div class="checkout-overlay" *ngIf="checkoutOpen()" (click)="checkoutOpen.set(false)"></div>
+    <section class="checkout-modal" *ngIf="checkoutOpen()" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+      <div class="drawer-head">
+        <div><p class="section-kicker">FINALIZAR PEDIDO</p><h2 id="checkout-title">Seus dados</h2></div>
+        <button type="button" class="close-button" aria-label="Fechar checkout" (click)="checkoutOpen.set(false)">×</button>
+      </div>
+      <p class="checkout-intro">Preencha seus dados para registrar o pedido na loja. O atendimento confirmará frete e pagamento pelo WhatsApp.</p>
+      <form class="checkout-form" (ngSubmit)="confirmCheckout()">
+        <label>Nome completo<input name="customerName" [(ngModel)]="customerName" required minlength="3" autocomplete="name" placeholder="Seu nome completo"></label>
+        <div class="checkout-form-row">
+          <label>WhatsApp<input name="customerPhone" [(ngModel)]="customerPhone" required minlength="10" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></label>
+          <label>E-mail <span class="optional-label">opcional</span><input name="customerEmail" [(ngModel)]="customerEmail" type="email" autocomplete="email" placeholder="voce@email.com"></label>
+        </div>
+        <div class="checkout-form-row">
+          <label>CEP <span class="optional-label">opcional</span><input name="customerCep" [(ngModel)]="customerCep" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000"></label>
+          <label>Número <span class="optional-label">opcional</span><input name="addressNumber" [(ngModel)]="addressNumber" autocomplete="address-line2" placeholder="Nº"></label>
+        </div>
+        <label>Endereço para entrega <span class="optional-label">opcional</span><input name="customerAddress" [(ngModel)]="customerAddress" autocomplete="street-address" placeholder="Rua, bairro e cidade"></label>
+        <label>Cupom de afiliado ou desconto <span class="optional-label">opcional</span><input name="affiliateCoupon" [(ngModel)]="affiliateCoupon" autocapitalize="characters" placeholder="Ex.: BRUNO5"></label>
+        <p class="checkout-note">O pedido será registrado como pendente. Preços, estoque e cupom serão conferidos no WooCommerce antes de abrir o WhatsApp.</p>
+        <div class="checkout-modal-total"><span>Total estimado dos produtos</span><strong>{{ cartTotal() | number:'1.2-2':'pt-BR' }}</strong></div>
+        <p class="checkout-error" *ngIf="checkoutError()">{{ checkoutError() }}</p>
+        <button class="checkout-button" type="submit" [disabled]="checkoutSubmitting()">{{ checkoutSubmitting() ? 'Registrando pedido…' : 'Registrar pedido e continuar' }} <span>→</span></button>
+      </form>
+    </section>
     <div class="toast" *ngIf="toast()">{{ toast() }}</div>
   `
 })
 export class AppComponent {
-  activePage = signal<'catalogo' | 'parceiros' | 'afiliados' | 'seguro'>('catalogo');
+  activePage = signal<'catalogo' | 'ofertas' | 'parceiros' | 'seguro'>('catalogo');
   pageTransition = signal(false);
   private transitionTimer: ReturnType<typeof setTimeout> | undefined;
-  navigateTo(page: 'catalogo' | 'parceiros' | 'afiliados' | 'seguro') {
+  navigateTo(page: 'catalogo' | 'ofertas' | 'parceiros' | 'seguro') {
     if (this.activePage() === page) { this.menuOpen.set(false); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     this.activePage.set(page);
     this.menuOpen.set(false);
@@ -137,8 +193,13 @@ export class AppComponent {
   search = ''; sortBy = 'featured'; category = 'all'; availability = 'all'; typeFilter = 'all'; brandFilter = 'all'; shippingFilter = 'all';
   viewMode = signal<'grid' | 'list'>('grid');
   filtersOpen = signal(false); cartOpen = signal(false); menuOpen = signal(false); toast = signal('');
+  checkoutOpen = signal(false);
+  checkoutSubmitting = signal(false);
+  checkoutError = signal('');
+  customerName = ''; customerPhone = ''; customerEmail = ''; customerCep = ''; addressNumber = ''; customerAddress = ''; affiliateCoupon = '';
   favorites = signal<number[]>([]);
-  private readonly products: Product[] = [
+  productQuantities = signal<Record<number, number>>({});
+  private readonly fallbackProducts: Product[] = [
     {id:1,brand:'LANDERLAN',name:'Cipionato de Testosterona 200mg/2ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:135,available:true,image:'assets/products/cipionato-lander-gold.webp'},
     {id:2,brand:'LANDERLAN',name:'Decaland Depot 200mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:135,available:true,image:'assets/products/decaland-lander-gold-deca.webp'},
     {id:3,brand:'COOPER PHARMA',name:'Testosterone Mix Injection 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:59,available:true,image:'assets/products/durateston-cooper-pharma-susobolic.webp'},
@@ -151,11 +212,83 @@ export class AppComponent {
     {id:10,brand:'MUSCLE LABS',name:'Testoviron 250mg/ml',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:249,available:true,image:'assets/products/testosterona-enantato-mucle-labs-testoviron.webp'},
     {id:11,brand:'ZPHC',name:'Retatrutida 120mg (5 vial de 24mg)',category:'Injetáveis',type:'Injetáveis',shipping:['Transportadora','Sedex','PAC'],price:2997,oldPrice:3297,available:true,premium:true,badge:'OFERTA LIMITADA',image:'assets/products/zphc-reta-120.jpeg'}
   ];
+  products = signal<Product[]>(this.fallbackProducts);
+  catalogSource = signal<'loading' | 'king-shape' | 'woocommerce' | 'fallback'>('loading');
+  catalogMessage = signal('Conectando ao catálogo da loja…');
   cartItems = signal<CartItem[]>(this.restoreCart());
-  brands() { return [...new Set(this.products.map(p => p.brand))].sort((a,b) => a.localeCompare(b, 'pt-BR')); }
+  constructor() { void this.loadWooCommerceCatalog(); }
+  private async loadWooCommerceCatalog() {
+    // O catálogo oficial da King Shape é o CPT ksa_product, servido pela API própria.
+    // Em desenvolvimento local, consulta o WordPress de produção para evitar depender de uma instalação local.
+    const apiBase = 'https://kingshape.fit/wp-json/ksa/v1/products';
+    try {
+      const firstResponse = await fetch(`${apiBase}?page=1&per_page=100`, { headers: { Accept: 'application/json' } });
+      if (!firstResponse.ok) throw new Error(`A API do catálogo respondeu ${firstResponse.status}.`);
+      const firstData = await firstResponse.json() as KingShapeApiResponse;
+      if (!Array.isArray(firstData.products)) throw new Error('A API não retornou a lista de produtos esperada.');
+      const allItems = [...firstData.products];
+      const pages = Math.max(1, Number(firstData.pages || 1));
+      for (let page = 2; page <= pages; page++) {
+        const response = await fetch(`${apiBase}?page=${page}&per_page=100`, { headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error(`Falha ao carregar a página ${page} do catálogo (${response.status}).`);
+        const data = await response.json() as KingShapeApiResponse;
+        if (Array.isArray(data.products)) allItems.push(...data.products);
+      }
+
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const liveProducts = allItems
+        .filter(item => item && Number(item.id) > 0 && !!item.name && item.hidden !== true)
+        .map((item): Product => {
+          const price = Number(item.price ?? 0);
+          const available = String(item.status || '').trim().toLocaleLowerCase('pt-BR') === 'disponível';
+          const starts = String(item.display_start || '').slice(0, 10);
+          const ends = String(item.display_end || '').slice(0, 10);
+          const withinSchedule = (!starts || starts <= todayKey) && (!ends || ends >= todayKey);
+          const isFeatured = (!!item.featured || !!item.pinned) && withinSchedule;
+          const badge = withinSchedule ? (String(item.card_label || '').trim() || (isFeatured ? 'DESTAQUE' : undefined)) : undefined;
+          const category = String(item.category || item.type || 'Produtos');
+          return {
+            id: Number(item.id),
+            brand: String(item.brand || category),
+            name: String(item.name),
+            category,
+            type: String(item.type || category),
+            shipping: Array.isArray(item.delivery) ? item.delivery : [],
+            price: Number.isFinite(price) ? price : 0,
+            available,
+            premium: isFeatured,
+            image: String(item.image || '').trim() || 'assets/product-placeholder.svg',
+            ...(badge ? { badge } : {}),
+            sku: String(item.sku || '').trim() || undefined
+          };
+        })
+        .filter(p => p.id > 0 && p.name);
+
+      if (!liveProducts.length) throw new Error('Nenhum produto visível foi encontrado no catálogo.');
+      this.products.set(liveProducts);
+      this.catalogSource.set('king-shape');
+      this.catalogMessage.set(`${liveProducts.length} produtos carregados do catálogo King Shape.`);
+      // Atualiza os itens persistidos com os dados atuais do catálogo.
+      const byId = new Map(liveProducts.map(p => [p.id, p]));
+      this.cartItems.update(items => {
+        const next = items.filter(item => byId.has(item.product.id)).map(item => ({ ...item, product: byId.get(item.product.id)! }));
+        this.saveCart(next);
+        return next;
+      });
+    } catch (error) {
+      this.catalogSource.set('fallback');
+      this.catalogMessage.set('Não foi possível conectar ao catálogo King Shape. O catálogo de demonstração está visível; pedidos reais permanecem bloqueados.');
+      console.warn('King Shape: falha ao carregar catálogo personalizado.', error);
+    }
+  }
+
+  brands() { return [...new Set(this.products().map(p => p.brand))].sort((a,b) => a.localeCompare(b, 'pt-BR')); }
+  categories() { return [...new Set(this.products().map(p => p.category))].sort((a,b) => a.localeCompare(b, 'pt-BR')); }
+  offerProducts() { const query = this.search.trim().toLocaleLowerCase('pt-BR'); let list = this.products().filter(p => (!!p.oldPrice && p.price < p.oldPrice || !!p.premium || !!p.badge) && p.available && (!query || `${p.name} ${p.brand} ${p.category}`.toLocaleLowerCase('pt-BR').includes(query))); if (this.sortBy === 'price-asc') list = [...list].sort((a,b)=>a.price-b.price); if (this.sortBy === 'price-desc') list = [...list].sort((a,b)=>b.price-a.price); if (this.sortBy === 'name') list = [...list].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')); return list; }
   filteredProducts() {
     const query = this.search.trim().toLocaleLowerCase('pt-BR');
-    let list = this.products.filter(p => (!query || `${p.name} ${p.brand} ${p.category}`.toLocaleLowerCase('pt-BR').includes(query)) && (this.category === 'all' || p.category === this.category) && (this.typeFilter === 'all' || p.type === this.typeFilter) && (this.brandFilter === 'all' || p.brand === this.brandFilter) && (this.shippingFilter === 'all' || p.shipping.includes(this.shippingFilter)) && (this.availability === 'all' || (this.availability === 'available' ? p.available : !p.available)));
+    let list = this.products().filter(p => (!query || `${p.name} ${p.brand} ${p.category}`.toLocaleLowerCase('pt-BR').includes(query)) && (this.category === 'all' || p.category === this.category) && (this.typeFilter === 'all' || p.type === this.typeFilter) && (this.brandFilter === 'all' || p.brand === this.brandFilter) && (this.shippingFilter === 'all' || p.shipping.includes(this.shippingFilter)) && (this.availability === 'all' || (this.availability === 'available' ? p.available : !p.available)));
     if (this.sortBy === 'price-asc') list = [...list].sort((a,b)=>a.price-b.price);
     if (this.sortBy === 'price-desc') list = [...list].sort((a,b)=>b.price-a.price);
     if (this.sortBy === 'name') list = [...list].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
@@ -165,7 +298,9 @@ export class AppComponent {
   cartTotal = computed(() => this.cartItems().reduce((sum,item)=>sum+item.qty*(Number(item.product.price) || 0),0));
   activeFilterCount() { return Number(this.category !== 'all')+Number(this.availability !== 'all')+Number(this.typeFilter !== 'all')+Number(this.brandFilter !== 'all')+Number(this.shippingFilter !== 'all'); }
   trackProduct(_: number, product: Product) { return product.id; }
-  addToCart(product: Product) { if (!product.available) return; this.cartItems.update(items => { const found=items.find(i=>i.product.id===product.id); const next=found?items.map(i=>i.product.id===product.id?{...i,qty:i.qty+1}:i):[...items,{product,qty:1}]; this.saveCart(next); return next; }); this.showToast('Produto adicionado ao carrinho'); }
+  selectedProductQty(id: number) { return this.productQuantities()[id] ?? 1; }
+  changeProductQty(id: number, delta: number) { this.productQuantities.update(qtys => ({ ...qtys, [id]: Math.max(1, Math.min(99, (qtys[id] ?? 1) + delta)) })); }
+  addToCart(product: Product, quantity = 1) { if (!product.available) return; const qty = Math.max(1, Math.min(99, Math.floor(quantity))); this.cartItems.update(items => { const found=items.find(i=>i.product.id===product.id); const next=found?items.map(i=>i.product.id===product.id?{...i,qty:i.qty+qty}:i):[...items,{product,qty}]; this.saveCart(next); return next; }); this.productQuantities.update(qtys => ({ ...qtys, [product.id]: 1 })); this.showToast(`${qty} ${qty === 1 ? 'unidade adicionada' : 'unidades adicionadas'} ao carrinho`); }
   changeQty(id:number,delta:number) { this.cartItems.update(items=>{const next=items.map(i=>i.product.id===id?{...i,qty:i.qty+delta}:i).filter(i=>i.qty>0);this.saveCart(next);return next;}); }
   removeFromCart(id:number) { this.cartItems.update(items=>{const next=items.filter(i=>i.product.id!==id);this.saveCart(next);return next;}); }
   toggleFavorite(id:number) { this.favorites.update(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id]); }
@@ -175,29 +310,78 @@ export class AppComponent {
   showAccountMessage() { this.showToast('Área do cliente será conectada em uma próxima etapa'); }
 
   checkout() {
-    const items = this.cartItems();
-    if (!items.length) {
+    if (this.catalogSource() !== 'woocommerce') { this.showToast('Catálogo conectado. O checkout precisa ser integrado à API KSA antes de registrar pedidos.'); return; }
+    if (!this.cartItems().length) {
       this.showToast('Adicione pelo menos um produto ao carrinho');
       return;
     }
+    this.checkoutOpen.set(true);
+  }
 
-    const lines = items.map(({ product, qty }) => {
-      const unitPrice = Number(product.price) || 0;
-      const subtotal = unitPrice * qty;
-      return `• ${product.name}\n  Quantidade: ${qty}\n  Preço unitário: ${this.formatBRL(unitPrice)}\n  Subtotal: ${this.formatBRL(subtotal)}`;
-    });
-    const message = [
-      'Olá! Gostaria de fazer um pedido na King Shape.',
-      '',
-      ...lines,
-      '',
-      `Total estimado: ${this.formatBRL(this.cartTotal())}`,
-      '',
-      'Poderiam confirmar disponibilidade, valores e condições de entrega?'
-    ].join('\n');
-
-    const whatsappUrl = `https://wa.me/5511941749894?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  async confirmCheckout() {
+    if (this.catalogSource() !== 'woocommerce') { this.checkoutError.set('O catálogo King Shape está conectado, mas o checkout ainda precisa usar a API KSA. Nenhum pedido foi enviado.'); return; }
+    const items = this.cartItems();
+    if (!items.length) { this.checkoutOpen.set(false); this.showToast('Seu carrinho está vazio'); return; }
+    if (this.customerName.trim().length < 3 || this.customerPhone.replace(/\D/g, '').length < 10) {
+      this.checkoutError.set('Informe seu nome completo e um WhatsApp válido.');
+      return;
+    }
+    if (this.checkoutSubmitting()) return;
+    this.checkoutSubmitting.set(true);
+    this.checkoutError.set('');
+    // Abre uma janela durante o gesto do usuário para evitar bloqueio de popup após a chamada à API.
+    const whatsappWindow = window.open('about:blank', '_blank');
+    try {
+      const apiBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8881/wp-json/ks-checkout/v1'
+        : `${window.location.origin}/wp-json/ks-checkout/v1`;
+      const response = await fetch(`${apiBase}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: {
+            name: this.customerName.trim(), phone: this.customerPhone.trim(), email: this.customerEmail.trim(),
+            postcode: this.customerCep.trim(), address: this.customerAddress.trim(), address_number: this.addressNumber.trim()
+          },
+          coupon_code: this.affiliateCoupon.trim().toUpperCase(),
+          items: items.map(({ product, qty }) => ({ woocommerce_product_id: product.id, product_id: product.id, quantity: qty }))
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success || !result.order) {
+        throw new Error(result.message || 'Não foi possível registrar o pedido. Confira a configuração da loja e tente novamente.');
+      }
+      const order = result.order;
+      const lines = (order.items || []).map((item: any) => `• ${item.name} x${item.quantity} = ${this.formatBRL(Number(item.total) || 0)}`);
+      const message = [
+        `Olá! Registrei um pedido na King Shape.`,
+        `Pedido WooCommerce: #${order.number}`,
+        `Status: pendente de confirmação`, '',
+        'DADOS DO CLIENTE',
+        `Nome: ${this.customerName.trim()}`,
+        `WhatsApp: ${this.customerPhone.trim()}`,
+        ...(this.customerEmail.trim() ? [`E-mail: ${this.customerEmail.trim()}`] : []),
+        ...(this.customerCep.trim() ? [`CEP: ${this.customerCep.trim()}`] : []),
+        ...(this.customerAddress.trim() ? [`Endereço: ${this.customerAddress.trim()}`] : []),
+        ...(this.addressNumber.trim() ? [`Número: ${this.addressNumber.trim()}`] : []),
+        ...(order.coupon ? [`Cupom aplicado: ${order.coupon}`] : []), '',
+        'ITENS DO PEDIDO', ...lines, '',
+        `Subtotal: ${this.formatBRL(Number(order.subtotal) || 0)}`,
+        `Desconto: ${this.formatBRL(Number(order.discount) || 0)}`,
+        `Total registrado: ${this.formatBRL(Number(order.total) || 0)}`,
+        '', 'Por favor, confirmem frete, disponibilidade e instruções de pagamento.'
+      ].join('\n');
+      const whatsappUrl = `https://wa.me/5511941749894?text=${encodeURIComponent(message)}`;
+      if (whatsappWindow) { whatsappWindow.opener = null; whatsappWindow.location.href = whatsappUrl; }
+      else { this.checkoutError.set('O navegador bloqueou a abertura do WhatsApp. Permita pop-ups e tente novamente.'); return; }
+      this.checkoutOpen.set(false);
+      this.showToast(`Pedido #${order.number} registrado como pendente`);
+    } catch (error) {
+      if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+      this.checkoutError.set(error instanceof Error ? error.message : 'Erro inesperado ao registrar o pedido.');
+    } finally {
+      this.checkoutSubmitting.set(false);
+    }
   }
 
   private formatBRL(value: number): string {
@@ -205,5 +389,5 @@ export class AppComponent {
   }
   private showToast(message:string) { this.toast.set(message); setTimeout(()=>this.toast.set(''),2400); }
   private saveCart(items:CartItem[]) { try { localStorage.setItem('ks-prototype-cart',JSON.stringify(items.map(i=>({id:i.product.id,qty:i.qty})))); } catch {} }
-  private restoreCart():CartItem[] { try { const saved=JSON.parse(localStorage.getItem('ks-prototype-cart')||'[]') as {id:number;qty:number}[]; return saved.flatMap(s=>{const product=this.products?.find(p=>p.id===s.id);return product&&s.qty>0?[{product,qty:s.qty}]:[];}); } catch { return []; } }
+  private restoreCart():CartItem[] { try { const saved=JSON.parse(localStorage.getItem('ks-prototype-cart')||'[]') as {id:number;qty:number}[]; return saved.flatMap(s=>{const product=this.products()?.find(p=>p.id===s.id);return product&&s.qty>0?[{product,qty:s.qty}]:[];}); } catch { return []; } }
 }

@@ -1,6 +1,6 @@
 {
   "name": "kingshape-angular-storefront",
-  "version": "1.5.5",
+  "version": "1.5.17",
   "private": true,
   "scripts": {
     "start": "ng serve",
